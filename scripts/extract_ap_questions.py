@@ -13,8 +13,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 
-MARKDOWN_DIR = Path(__file__).parent / "past_exams" / "markdown"
-OUTPUT_FILE = Path(__file__).parent / "ap_questions_1000.json"
+MARKDOWN_DIR = Path(__file__).parent.parent / "past_exams" / "markdown"
+OUTPUT_FILE = Path(__file__).parent.parent / "data" / "ap_questions_1000.json"
 TARGET_COUNT = 1000
 
 

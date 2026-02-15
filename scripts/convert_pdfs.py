@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pymupdf
 
-PDF_DIR = Path(__file__).parent / "past_exams"
-OUT_DIR = PDF_DIR / "markdown"
+PDF_DIR = Path(__file__).parent.parent / "past_exams" / "pdf"
+OUT_DIR = Path(__file__).parent.parent / "past_exams" / "markdown"
 
 SECTIONS = [
     ("am_qs", "午前問題"),

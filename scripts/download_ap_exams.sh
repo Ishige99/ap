@@ -4,7 +4,7 @@
 # https://www.ipa.go.jp/shiken/mondai-kaiotu/index.html
 
 BASE_URL="https://www.ipa.go.jp"
-DEST_DIR="/Users/osamu/git/ishige/ap/past_exams"
+DEST_DIR="$(cd "$(dirname "$0")/.." && pwd)/past_exams/pdf"
 
 mkdir -p "$DEST_DIR"
 
