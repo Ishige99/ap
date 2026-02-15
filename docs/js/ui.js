@@ -1,6 +1,6 @@
 import { getUser, getConfig, setUser, setConfig, saveAnswers, getStats, clearHistory } from "./storage.js";
 import { getCategories, filterByCategory, pickQuestions } from "./questions.js";
-import { commitAnswers } from "./github.js";
+import { commitAnswers, isGitHubPages } from "./github.js";
 
 const FIELD_NAMES = { T: "テクノロジ", M: "マネジメント", S: "ストラテジ" };
 const COUNT_OPTIONS = [5, 10, 25, 50, 0]; // 0 = all
@@ -31,6 +31,7 @@ export function updateUserInfo() {
 export function renderSetup() {
   const app = $("#app");
   const config = getConfig() || {};
+  const onGhPages = isGitHubPages();
   app.innerHTML = `
     <div class="card">
       <h2 style="margin-bottom:16px">初期設定</h2>
@@ -41,15 +42,8 @@ export function renderSetup() {
       <div class="form-group">
         <label>GitHub Personal Access Token</label>
         <div class="hint">Fine-grained PAT: 対象リポジトリの Contents 権限 (Read and write) が必要です。このトークンはこのブラウザの localStorage にのみ保存されます。</div>
-        <input type="password" id="setup-token" value="${esc(config.token || "")}" placeholder="github_pat_...">
-      </div>
-      <div class="form-group">
-        <label>リポジトリオーナー</label>
-        <input type="text" id="setup-owner" value="${esc(config.owner || "")}" placeholder="例: ishige">
-      </div>
-      <div class="form-group">
-        <label>リポジトリ名</label>
-        <input type="text" id="setup-repo" value="${esc(config.repo || "")}" placeholder="例: ap">
+        <input type="password" id="setup-token" value="${esc(config.token || "")}" placeholder="github_pat_..."${onGhPages ? "" : ' disabled'}>
+        ${onGhPages ? "" : '<div class="hint" style="color:var(--danger)">ローカル環境では GitHub 連携は無効です。GitHub Pages 上でのみ動作します。</div>'}
       </div>
       <div class="form-actions">
         <button class="btn btn-primary btn-block" id="setup-save">保存して始める</button>
@@ -59,13 +53,9 @@ export function renderSetup() {
   $("#setup-save").addEventListener("click", () => {
     const user = $("#setup-user").value.trim();
     const token = $("#setup-token").value.trim();
-    const owner = $("#setup-owner").value.trim();
-    const repo = $("#setup-repo").value.trim();
     if (!user) return alert("ユーザー名を入力してください");
-    if (!token) return alert("GitHub PAT を入力してください");
-    if (!owner || !repo) return alert("リポジトリ情報を入力してください");
     setUser(user);
-    setConfig({ token, owner, repo });
+    setConfig({ token });
     location.hash = "#home";
   });
 }
@@ -323,24 +313,31 @@ export async function renderResult() {
     </tr>`;
   }
 
-  html += `</tbody></table></div>
-    <div id="commit-status" class="commit-status saving">回答データを保存中...</div>
-    <button class="btn btn-outline btn-block" onclick="location.hash='#home'" style="margin-top:12px">トップに戻る</button>`;
+  const canCommit = isGitHubPages() && getConfig()?.token;
+  if (canCommit) {
+    html += `</tbody></table></div>
+      <div id="commit-status" class="commit-status saving">回答データを保存中...</div>`;
+  } else {
+    html += `</tbody></table></div>`;
+  }
+  html += `<button class="btn btn-outline btn-block" onclick="location.hash='#home'" style="margin-top:12px">トップに戻る</button>`;
 
   app.innerHTML = html;
 
   // Save to localStorage
   saveAnswers(answers);
 
-  // Commit to GitHub
-  const statusEl = $("#commit-status");
-  try {
-    await commitAnswers(answers);
-    statusEl.className = "commit-status saved";
-    statusEl.textContent = "回答データを GitHub に保存しました";
-  } catch (err) {
-    statusEl.className = "commit-status error";
-    statusEl.textContent = `保存に失敗しました: ${err.message}`;
+  // Commit to GitHub (GitHub Pages + PAT設定済みの場合のみ)
+  if (canCommit) {
+    const statusEl = $("#commit-status");
+    try {
+      await commitAnswers(answers);
+      statusEl.className = "commit-status saved";
+      statusEl.textContent = "回答データを GitHub に保存しました";
+    } catch (err) {
+      statusEl.className = "commit-status error";
+      statusEl.textContent = `保存に失敗しました: ${err.message}`;
+    }
   }
 
   quizState = null;
@@ -432,6 +429,7 @@ export function renderHistory() {
 export function renderSettings() {
   const app = $("#app");
   const config = getConfig() || {};
+  const onGhPages = isGitHubPages();
   app.innerHTML = `
     <a href="#home" class="back-link">< トップに戻る</a>
     <div class="card">
@@ -443,15 +441,8 @@ export function renderSettings() {
       <div class="form-group">
         <label>GitHub Personal Access Token</label>
         <div class="hint">このトークンはこのブラウザの localStorage にのみ保存されます。</div>
-        <input type="password" id="settings-token" value="${esc(config.token || "")}">
-      </div>
-      <div class="form-group">
-        <label>リポジトリオーナー</label>
-        <input type="text" id="settings-owner" value="${esc(config.owner || "")}">
-      </div>
-      <div class="form-group">
-        <label>リポジトリ名</label>
-        <input type="text" id="settings-repo" value="${esc(config.repo || "")}">
+        <input type="password" id="settings-token" value="${esc(config.token || "")}"${onGhPages ? "" : " disabled"}>
+        ${onGhPages ? "" : '<div class="hint" style="color:var(--danger)">ローカル環境では GitHub 連携は無効です。</div>'}
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" id="settings-save">保存</button>
@@ -462,11 +453,9 @@ export function renderSettings() {
   $("#settings-save").addEventListener("click", () => {
     const user = $("#settings-user").value.trim();
     const token = $("#settings-token").value.trim();
-    const owner = $("#settings-owner").value.trim();
-    const repo = $("#settings-repo").value.trim();
     if (!user) return alert("ユーザー名を入力してください");
     setUser(user);
-    setConfig({ token, owner, repo });
+    setConfig({ token });
     location.hash = "#home";
   });
 }

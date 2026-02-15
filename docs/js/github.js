@@ -2,6 +2,21 @@ import { getUser, getConfig } from "./storage.js";
 
 const API_BASE = "https://api.github.com";
 
+function getRepoInfo() {
+  const hostname = location.hostname;
+  const pathname = location.pathname;
+  if (hostname.endsWith(".github.io")) {
+    const owner = hostname.replace(".github.io", "");
+    const repo = pathname.split("/").filter(Boolean)[0] || "";
+    return { owner, repo };
+  }
+  return null;
+}
+
+export function isGitHubPages() {
+  return getRepoInfo() !== null;
+}
+
 function headers() {
   const config = getConfig();
   return {
@@ -12,8 +27,9 @@ function headers() {
 }
 
 function repoPath() {
-  const config = getConfig();
-  return `${API_BASE}/repos/${config.owner}/${config.repo}/contents`;
+  const info = getRepoInfo();
+  if (!info) throw new Error("GitHub Pages 環境外では自動コミットできません");
+  return `${API_BASE}/repos/${info.owner}/${info.repo}/contents`;
 }
 
 function csvPath() {

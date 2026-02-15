@@ -13,7 +13,7 @@ import {
 } from "./ui.js";
 
 function isConfigured() {
-  return !!(getUser() && getConfig()?.token);
+  return !!getUser();
 }
 
 async function route() {
