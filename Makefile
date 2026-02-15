@@ -1,4 +1,4 @@
-.PHONY: help setup setup-tesseract download convert extract all clean clean-all
+.PHONY: help setup setup-tesseract download convert extract all site serve clean clean-site clean-all
 
 # デフォルトターゲット: ヘルプを表示
 help:
@@ -15,8 +15,13 @@ help:
 	@echo "  make extract          Markdownから問題を抽出してJSONを生成"
 	@echo "  make all              上記3つを順番にすべて実行"
 	@echo ""
+	@echo "【サイト】"
+	@echo "  make site             サイト用データをビルド (JSON + 画像を docs/ にコピー)"
+	@echo "  make serve            ローカルプレビューサーバーを起動 (localhost:8000)"
+	@echo ""
 	@echo "【クリーンアップ】"
 	@echo "  make clean            生成したJSONファイルを削除"
+	@echo "  make clean-site       サイト用データを削除 (docs/data, docs/images)"
 	@echo "  make clean-all        JSON + Markdown変換結果をすべて削除"
 	@echo ""
 
@@ -60,11 +65,25 @@ data/ap_questions_1000.json: scripts/extract_ap_questions.py past_exams/markdown
 # パイプライン全体を順番に実行 (download → convert → extract)
 all: download convert extract
 
+# --- サイト ---
+
+# サイト用データをビルド (JSON + 画像を docs/ にコピー)
+site: data/ap_questions_1000.json
+	python3 scripts/build_site.py
+
+# ローカルプレビューサーバーを起動
+serve: site
+	python3 -m http.server 8000 --directory docs
+
 # --- クリーンアップ ---
 
 # 生成したJSONファイルを削除
 clean:
 	rm -f data/ap_questions_1000.json
+
+# サイト用データを削除
+clean-site:
+	rm -rf docs/data docs/images
 
 # JSON + Markdown変換結果をすべて削除 (PDFは残す)
 clean-all: clean
